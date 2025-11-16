@@ -1,0 +1,58 @@
+namespace PizzaMaker
+{
+    partial class FrmOrderDetails
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        private System.Windows.Forms.Label lblOrderDetails;
+        private System.Windows.Forms.Button btnSaveOrder;
+
+        /// Clean up
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        /// build controls on the form
+        private void InitializeComponent()
+        {
+            this.lblOrderDetails = new System.Windows.Forms.Label();
+            this.btnSaveOrder = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // lblOrderDetails
+            // 
+            this.lblOrderDetails.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lblOrderDetails.Location = new System.Drawing.Point(20, 20);
+            this.lblOrderDetails.Name = "lblOrderDetails";
+            this.lblOrderDetails.Size = new System.Drawing.Size(740, 400);
+            this.lblOrderDetails.TabIndex = 0;
+            this.lblOrderDetails.Text = "Order Details";
+            // 
+            // btnSaveOrder
+            // 
+            this.btnSaveOrder.Location = new System.Drawing.Point(20, 440);
+            this.btnSaveOrder.Name = "btnSaveOrder";
+            this.btnSaveOrder.Size = new System.Drawing.Size(120, 35);
+            this.btnSaveOrder.TabIndex = 1;
+            this.btnSaveOrder.Text = "Save Order";
+            this.btnSaveOrder.UseVisualStyleBackColor = true;
+            this.btnSaveOrder.Click += new System.EventHandler(this.btnSaveOrder_Click);
+            // 
+            // FrmOrderDetails
+            // 
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(800, 500);
+            this.Controls.Add(this.btnSaveOrder);
+            this.Controls.Add(this.lblOrderDetails);
+            this.Name = "FrmOrderDetails";
+            this.Text = "Pizza Order Details";
+            this.ResumeLayout(false);
+
+        }
+    }
+}

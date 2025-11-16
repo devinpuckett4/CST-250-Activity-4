@@ -1,0 +1,443 @@
+// Devin Leugers - CST-250 Activity 4
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using PizzaMakerClassLibrary.Models;
+using PizzaMakerClassLibrary.Services.BusinessLogicLayer;
+namespace PizzaMaker
+{
+    // UI only: builds a PizzaModel from controls and calls PizzaLogic to store it.
+    public class FrmPizzaMaker : Form
+    {
+        private PizzaModel _pizza;
+        private readonly PizzaLogic _pizzaLogic;
+        // UI controls
+        private TextBox txtName;
+        private GroupBox grpIngredients;
+        private GroupBox grpCrust;
+        private GroupBox grpExtraGoodies;
+        private ListBox lsbStrangeAddOns;
+        private DateTimePicker dtpDeliveryTime;
+        private PictureBox picPizzaBoxColor;
+        private Label lblSauce;
+        private Label lblCheese;
+        private HScrollBar hsbSauce;
+        private HScrollBar hsbCheese;
+        private Label lblPizzaPrice;
+        private Button btnCreatePizza;
+        private Button btnResetForm;
+        private Button btnSeeFullOrder;
+        public FrmPizzaMaker()
+        {
+            AutoScaleMode = AutoScaleMode.None;
+            AutoScroll = true;
+            Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            Text = "Pizza Maker";
+            BackColor = Color.WhiteSmoke;
+            StartPosition = FormStartPosition.CenterScreen;
+            ClientSize = new Size(1400, 930);
+            MinimumSize = new Size(1280, 900);
+            _pizzaLogic = new PizzaLogic();
+            _pizza = new PizzaModel();
+            BuildControls();
+            dtpDeliveryTime.Format = DateTimePickerFormat.Custom;
+            dtpDeliveryTime.CustomFormat = "MM/dd/yyyy hh:mm";
+            hsbSauce.Maximum = 100 + hsbSauce.LargeChange - 1;
+            hsbCheese.Maximum = 100 + hsbCheese.LargeChange - 1;
+            btnCreatePizza.Enabled = false;
+            btnSeeFullOrder.Enabled = false;
+            btnResetForm.Enabled = false;
+            //this sets base state AND price 15.00
+            ResetForm();
+        }
+        // Build UI 
+        private void BuildControls()
+        {
+            // Name
+            var lblName = new Label
+            {
+                Text = "Name:",
+                Font = new Font(Font, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(24, 24)
+            };
+            Controls.Add(lblName);
+            txtName = new TextBox
+            {
+                Location = new Point(140, 20),
+                Size = new Size(300, 34)
+            };
+            txtName.Leave += TxtNameLeaveEH;
+            Controls.Add(txtName);
+            // Ingredients group
+            grpIngredients = new GroupBox
+            {
+                Text = "Ingredients",
+                Font = new Font(Font, FontStyle.Bold),
+                Location = new Point(10, 80),
+                Size = new Size(400, 400)  // Adjusted height to fit checkboxes
+            };
+            Controls.Add(grpIngredients);
+            var pnlIngredients = new Panel
+            {
+                Location = new Point(20, 80),
+                Size = new Size(350, 300),  // Adjusted height to show all checkboxes
+                AutoScroll = true
+            };
+            grpIngredients.Controls.Add(pnlIngredients);
+           
+            string[] toppings =
+            {
+                "Pepperoni","Bacon","Olives","Mushrooms",
+                "Pineapple","Sausage","Peppers","Tomatoes"
+            };
+            int y = 0;
+            foreach (var top in toppings)
+            {
+                var cb = new CheckBox
+                {
+                    Text = top,
+                    Location = new Point(6, y),
+                    AutoSize = true
+                };
+                cb.CheckedChanged += ChbIngredientCheckedChangedEH;
+                pnlIngredients.Controls.Add(cb);
+                y += 35;  // Reduced spacing to 30 for tighter list
+            }
+            // Strange Add Ons
+            var lblStrange = new Label
+            {
+                Text = "Strange Add Ons",
+                Font = new Font(Font, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(450, 84)
+            };
+            Controls.Add(lblStrange);
+            lsbStrangeAddOns = new ListBox
+            {
+                Location = new Point(450, 116),
+                Size = new Size(360, 200),
+                SelectionMode = SelectionMode.MultiSimple
+            };
+            lsbStrangeAddOns.Items.AddRange(new object[]
+            {
+                "Pickles","Hot Cheetos","Frosting","BBQ Chips","Cereal"
+            });
+            lsbStrangeAddOns.SelectedIndexChanged += LsbStrangeAddOnsSelectedIndexChangedEH;
+            Controls.Add(lsbStrangeAddOns);
+            // Crust
+            grpCrust = new GroupBox
+            {
+                Text = "Crust",
+                Font = new Font(Font, FontStyle.Bold),
+                Location = new Point(430, 336),
+                Size = new Size(410, 240)
+            };
+            Controls.Add(grpCrust);
+     
+            var r1 = new RadioButton { Text = "Thin Crust", Location = new Point(20, 40), AutoSize = true };
+            var r2 = new RadioButton { Text = "Deep Dish", Location = new Point(20, 80), AutoSize = true };
+            var r3 = new RadioButton { Text = "Stuffed Crust", Location = new Point(20, 120), AutoSize = true };
+            var r4 = new RadioButton { Text = "Gluten Free", Location = new Point(20, 160), AutoSize = true };
+            r1.CheckedChanged += RdoCrustCheckedChangedEH;
+            r2.CheckedChanged += RdoCrustCheckedChangedEH;
+            r3.CheckedChanged += RdoCrustCheckedChangedEH;
+            r4.CheckedChanged += RdoCrustCheckedChangedEH;
+            grpCrust.Controls.AddRange(new Control[] { r1, r2, r3, r4 });
+            // Delivery Time
+            var lblDeliveryTime = new Label
+            {
+                Text = "Delivery Time",
+                Font = new Font(Font, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(860, 84)
+            };
+            Controls.Add(lblDeliveryTime);
+            dtpDeliveryTime = new DateTimePicker
+            {
+                Location = new Point(860, 116),
+                Size = new Size(300, 34)
+            };
+            dtpDeliveryTime.ValueChanged += DtpDeliveryTimeValueChangedEH;
+            Controls.Add(dtpDeliveryTime);
+            // Price label
+            var lblPizzaPriceText = new Label
+            {
+                Text = "Pizza Price:",
+                Font = new Font(Font, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(860, 170)
+            };
+            Controls.Add(lblPizzaPriceText);
+            lblPizzaPrice = new Label
+            {
+                Text = "$0",
+                ForeColor = Color.Red,
+                AutoSize = true,
+                Location = new Point(1020, 170)  // Shifted right to avoid cut-off
+            };
+            Controls.Add(lblPizzaPrice);
+            // Box color
+            var lblBoxColor = new Label
+            {
+                Text = "Pizza Box Color",
+                Font = new Font(Font, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(860, 212)
+            };
+            Controls.Add(lblBoxColor);
+            picPizzaBoxColor = new PictureBox
+            {
+                Location = new Point(860, 292),
+                Size = new Size(340, 130),
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White
+            };
+            picPizzaBoxColor.Click += PicPizzaBoxColorClickEH;
+            Controls.Add(picPizzaBoxColor);
+            // Extra Goodies: sauce / cheese
+            grpExtraGoodies = new GroupBox
+            {
+                Text = "Extra Goodies",
+                Font = new Font(Font, FontStyle.Bold),
+                Location = new Point(24, 520),
+                Size = new Size(400, 320)
+            };
+            Controls.Add(grpExtraGoodies);
+            var lblSauceText = new Label
+            {
+                Text = "Amount of Sauce",
+                Location = new Point(20, 36),
+                AutoSize = true
+            };
+            hsbSauce = new HScrollBar
+            {
+                Name = "hsbSauce",
+                Location = new Point(20, 68),
+                Size = new Size(300, 45),
+                Minimum = 0,
+                Maximum = 100,
+                SmallChange = 1
+            };
+            lblSauce = new Label
+            {
+                Text = "00",
+                Location = new Point(330, 72),
+                AutoSize = true
+            };
+            hsbSauce.ValueChanged += HsbExtraGoodiesValueChangedEH;
+            var lblCheeseText = new Label
+            {
+                Text = "Amount of Cheese",
+                Location = new Point(20, 152),
+                AutoSize = true
+            };
+            hsbCheese = new HScrollBar
+            {
+                Name = "hsbCheese",
+                Location = new Point(20, 184),
+                Size = new Size(300, 45),
+                Minimum = 0,
+                Maximum = 100,
+                SmallChange = 1
+            };
+            lblCheese = new Label
+            {
+                Text = "00",
+                Location = new Point(330, 188),
+                AutoSize = true
+            };
+            hsbCheese.ValueChanged += HsbExtraGoodiesValueChangedEH;
+            grpExtraGoodies.Controls.AddRange(new Control[]
+            {
+                lblSauceText, hsbSauce, lblSauce,
+                lblCheeseText, hsbCheese, lblCheese
+            });
+            // Buttons
+            btnCreatePizza = new Button
+            {
+                Text = "Create Pizza",
+                Location = new Point(24, 860),
+                Size = new Size(160, 44)
+            };
+            btnCreatePizza.Click += BtnCreatePizzaClickEH;
+            btnResetForm = new Button
+            {
+                Text = "Reset Form",
+                Location = new Point(200, 860),
+                Size = new Size(160, 44)
+            };
+            btnResetForm.Click += BtnResetFormClickEH;
+            btnSeeFullOrder = new Button
+            {
+                Text = "See Full Order",
+                Location = new Point(376, 860),
+                Size = new Size(160, 44)
+            };
+            btnSeeFullOrder.Click += BtnSeeFullOrderClickEH;
+            Controls.AddRange(new Control[] { btnCreatePizza, btnResetForm, btnSeeFullOrder });
+        }
+        //  Events 
+        private void EnablePizzaCreation()
+        {
+            btnCreatePizza.Enabled = true;
+            btnResetForm.Enabled = true;
+        }
+        private void TxtNameLeaveEH(object sender, EventArgs e)
+        {
+            _pizza.ClientName = txtName.Text?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(_pizza.ClientName))
+                EnablePizzaCreation();
+            UpdatePrice();
+        }
+        private void ChbIngredientCheckedChangedEH(object sender, EventArgs e)
+        {
+            _pizza.Ingredients ??= new List<string>();
+            if (sender is CheckBox cb)
+            {
+                if (cb.Checked)
+                {
+                    if (!_pizza.Ingredients.Contains(cb.Text))
+                        _pizza.Ingredients.Add(cb.Text);
+                }
+                else
+                {
+                    _pizza.Ingredients.Remove(cb.Text);
+                }
+            }
+            UpdatePrice();
+        }
+        private void LsbStrangeAddOnsSelectedIndexChangedEH(object sender, EventArgs e)
+        {
+            _pizza.StrangeAddOns = lsbStrangeAddOns.SelectedItems
+                .Cast<object>()
+                .Select(i => i.ToString() ?? "")
+                .ToList();
+            UpdatePrice();
+        }
+        private void RdoCrustCheckedChangedEH(object sender, EventArgs e)
+        {
+            if (sender is RadioButton rb && rb.Checked)
+                _pizza.Crust = rb.Text;
+            UpdatePrice();
+        }
+        private void HsbExtraGoodiesValueChangedEH(object sender, EventArgs e)
+        {
+            if (sender is HScrollBar hsb)
+            {
+                if (hsb.Name == "hsbSauce")
+                {
+                    _pizza.SauceAmount = hsb.Value;
+                    lblSauce.Text = hsb.Value.ToString("00");
+                }
+                else if (hsb.Name == "hsbCheese")
+                {
+                    _pizza.CheeseAmount = hsb.Value;
+                    lblCheese.Text = hsb.Value.ToString("00");
+                }
+            }
+            this.Refresh();
+            UpdatePrice();
+        }
+        private void DtpDeliveryTimeValueChangedEH(object sender, EventArgs e)
+        {
+            _pizza.DeliveryTime = dtpDeliveryTime.Value;
+        }
+        private void PicPizzaBoxColorClickEH(object sender, EventArgs e)
+        {
+            using var picker = new ColorDialog();
+            if (picker.ShowDialog() == DialogResult.OK)
+            {
+                _pizza.PizzaBoxColor = picker.Color;
+                picPizzaBoxColor.BackColor = picker.Color;
+            }
+        }
+        private void BtnCreatePizzaClickEH(object sender, EventArgs e)
+        {
+            var (ok, count) = _pizzaLogic.AddPizzaToOrder(_pizza);
+            if (!ok)
+            {
+                MessageBox.Show(
+                    "Please enter a name, choose a crust, pick at least one ingredient, and move sauce and cheese above 0.",
+                    "Missing Info",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+            btnSeeFullOrder.Enabled = count > 0;
+            ResetForm();
+        }
+        private void BtnResetFormClickEH(object sender, EventArgs e)
+        {
+            ResetForm();
+        }
+        private void BtnSeeFullOrderClickEH(object sender, EventArgs e)
+        {
+            var pizzas = _pizzaLogic.GetPizzaOrder();
+            if (pizzas == null || pizzas.Count == 0)
+            {
+                MessageBox.Show("No pizzas in the order yet.");
+                return;
+            }
+            using var details = new FrmOrderDetails(pizzas, _pizzaLogic);
+            details.DisplayPizzas();
+            details.ShowDialog(this);
+        }
+        // ========= Helpers =========
+        private void UpdatePrice()
+        {
+            if (_pizza == null)
+                return;
+            decimal total = 15.00m;
+            // +$0.50 for each regular ingredient
+            if (_pizza.Ingredients != null)
+                total += 0.50m * _pizza.Ingredients.Count;
+            // +$0.50 for each strange add-on
+            if (_pizza.StrangeAddOns != null)
+                total += 0.50m * _pizza.StrangeAddOns.Count;
+            // +$1.00 if Gluten Free crust
+            if (!string.IsNullOrWhiteSpace(_pizza.Crust) &&
+                _pizza.Crust.ToLower().Contains("gluten"))
+            {
+                total += 1.00m;
+            }
+            _pizza.Price = total;
+            lblPizzaPrice.Text = "$" + total.ToString("0.00");
+        }
+        private void ResetForm()
+        {
+            _pizza = new PizzaModel();
+            txtName.Text = "";
+            btnCreatePizza.Enabled = false;
+            // Clear ingredient checkboxes
+            foreach (var cb in grpIngredients.Controls
+                         .OfType<Panel>()
+                         .SelectMany(p => p.Controls.OfType<CheckBox>()))
+            {
+                cb.Checked = false;
+            }
+            // Clear strange add ons
+            lsbStrangeAddOns.ClearSelected();
+            // Clear crust
+            foreach (var rb in grpCrust.Controls.OfType<RadioButton>())
+                rb.Checked = false;
+            // Reset sliders
+            hsbSauce.Value = 0;
+            hsbCheese.Value = 0;
+            lblSauce.Text = "00";
+            lblCheese.Text = "00";
+            _pizza.SauceAmount = 0;
+            _pizza.CheeseAmount = 0;
+            // Reset delivery time
+            dtpDeliveryTime.Value = DateTime.Now;
+            _pizza.DeliveryTime = dtpDeliveryTime.Value;
+            // Reset box color
+            picPizzaBoxColor.BackColor = Color.White;
+            _pizza.PizzaBoxColor = Color.White;
+            // Now calculate and display starting price
+            UpdatePrice();
+        }
+    }
+}

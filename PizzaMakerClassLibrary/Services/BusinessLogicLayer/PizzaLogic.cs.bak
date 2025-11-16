@@ -1,0 +1,75 @@
+// Devin Leugers - CST-250 Activity 4
+using System.Collections.Generic;
+using PizzaMakerClassLibrary.Models;
+using PizzaMakerClassLibrary.Services.DataAccessLayer;
+
+namespace PizzaMakerClassLibrary.Services.BusinessLogicLayer
+{
+    // Handles business rules for pizza pricing and order storage
+    public class PizzaLogic
+    {
+        private readonly PizzaDAO _pizzaDAO;
+
+        public PizzaLogic()
+        {
+            _pizzaDAO = new PizzaDAO();
+        }
+
+        // Calculate price for a single pizza
+        public decimal CalculatePrice(PizzaModel pizza)
+        {
+            if (pizza == null)
+                return 0m;
+
+            // Base price per assignment
+            decimal total = 15.00m;
+
+            // Regular toppings
+            if (pizza.Ingredients != null)
+                total += 0.50m * pizza.Ingredients.Count;
+
+            // Strange add-ons
+            if (pizza.StrangeAddOns != null)
+                total += 0.50m * pizza.StrangeAddOns.Count;
+
+            // Gluten free upcharge
+            if (!string.IsNullOrWhiteSpace(pizza.Crust) &&
+                pizza.Crust.ToLower().Contains("gluten"))
+            {
+                total += 1.00m;
+            }
+
+            // Set final price on the model so DAO / details form can use it
+            pizza.Price = total;
+            return total;
+        }
+
+        // Validate and add pizza to in-memory order
+        // Returns (isValid, countInOrder)
+        public (bool isValid, int count) AddPizzaToOrder(PizzaModel pizza)
+        {
+            if (pizza == null)
+                return (false, _pizzaDAO.GetPizzaOrder().Count);
+
+            // Always sync price before saving
+            CalculatePrice(pizza);
+
+            bool ok =
+                !string.IsNullOrWhiteSpace(pizza.ClientName) &&
+                !string.IsNullOrWhiteSpace(pizza.Crust) &&
+                pizza.Ingredients != null && pizza.Ingredients.Count > 0 &&
+                pizza.SauceAmount > 0 &&
+                pizza.CheeseAmount > 0;
+
+            if (!ok)
+                return (false, _pizzaDAO.GetPizzaOrder().Count);
+
+            int count = _pizzaDAO.AddPizzaToOrder(pizza);
+            return (true, count);
+        }
+
+        public List<PizzaModel> GetPizzaOrder() => _pizzaDAO.GetPizzaOrder();
+
+        public bool WriteOrderToFile() => _pizzaDAO.WriteOrderToFile();
+    }
+}
